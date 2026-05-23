@@ -12,7 +12,10 @@ export function HertaFloat() {
   const [labelIdx, setLabelIdx] = useState(0)
 
   const handleClick = () => {
-    playKuruKuru()
+    // Use the real Herta MP3; fall back to synthesized if it errors
+    const a = new Audio('/music/herta-kuru-kuru.mp3')
+    a.volume = 0.8
+    a.play().catch(() => playKuruKuru())
     const next = (labelIdx + 1) % KURU_LABELS.length
     setLabelIdx(next)
     setBubble(KURU_LABELS[next])

@@ -3,6 +3,12 @@
 import { useState } from 'react'
 import { useAudio } from '@/lib/AudioContext'
 
+function playSound(src: string, volume = 0.82) {
+  const a = new Audio(src)
+  a.volume = volume
+  a.play().catch(() => {})
+}
+
 const QUOTES = [
   'Even on the saddest day in Tokyo, the convenience store is still warm and the cat is still loud.」',
   "The petal that lands on your sleeve is choosing you. Don't brush it off.」",
@@ -14,11 +20,11 @@ const QUOTES = [
 function QuoteCard() {
   const [idx, setIdx] = useState(0)
   const [fading, setFading] = useState(false)
-  const { playChime, ready } = useAudio()
+  const { playChime } = useAudio()
 
   const reroll = () => {
     setFading(true)
-    if (ready) playChime(660 + idx * 40)
+    playChime(660 + idx * 40)
     setTimeout(() => {
       setIdx((i) => (i + 1) % QUOTES.length)
       setFading(false)
@@ -44,7 +50,6 @@ function QuoteCard() {
   )
 }
 
-// Badge data
 const BADGES = [
   { cls: 'gold',   kanji: '夢', hasRibbon: true  },
   { cls: 'pink',   kanji: '猫', hasRibbon: false },
@@ -55,11 +60,16 @@ const BADGES = [
 ]
 
 function Achievements() {
-  const { playBadge, ready } = useAudio()
+  const { playBadge } = useAudio()
 
   const handleBadgeClick = (cls: string) => {
     if (cls === 'locked') return
-    if (ready) playBadge()
+    if (cls === 'gold') {
+      // Gold badge gets the Bankai treatment
+      playSound('/music/bankai-byakuya.mp3', 0.8)
+    } else {
+      playBadge()
+    }
   }
 
   return (
@@ -80,23 +90,24 @@ function Achievements() {
           </div>
         ))}
       </div>
-      <div
-        style={{
-          font: '600 11px/1.4 var(--font-pixel)',
-          letterSpacing: '.12em',
-          opacity: 0.7,
-        }}
-      >
+      <div style={{ font: '600 11px/1.4 var(--font-pixel)', letterSpacing: '.12em', opacity: 0.7 }}>
         ⋆ NEW! &nbsp;&quot;Stayed past midnight&quot; &nbsp;+ 1 chibi sticker
         <br />
-        <span style={{ opacity: 0.5 }}>⋆ tap a badge to hear it shine</span>
+        <span style={{ opacity: 0.5 }}>⋆ tap 夢 for bankai · others for chime</span>
       </div>
     </div>
   )
 }
 
 export function FunZone() {
-  const { playChime, ready } = useAudio()
+  const [pulled, setPulled] = useState(false)
+
+  const handleGacha = () => {
+    // Tuturu~ from Steins;Gate = perfect gacha pull sound
+    playSound('/music/anime-tututru.mp3', 0.85)
+    setPulled(true)
+    setTimeout(() => setPulled(false), 3000)
+  }
 
   return (
     <section className="zone fun" id="fun">
@@ -136,16 +147,13 @@ export function FunZone() {
           </div>
           <button
             className="btn"
-            onClick={() => {
-              if (ready) {
-                // ascending chime sequence = gacha pull sound
-                [523, 659, 784, 1047].forEach((f, i) =>
-                  setTimeout(() => playChime(f), i * 100)
-                )
-              }
+            onClick={handleGacha}
+            style={{
+              boxShadow: pulled ? '0 0 24px var(--cyan)' : undefined,
+              transition: 'box-shadow .4s',
             }}
           >
-            Pull once <span className="kbd">FREE</span>
+            {pulled ? '✿ TUTURU~! CONGRATS!' : <>Pull once <span className="kbd">FREE</span></>}
           </button>
           <div className="pity">
             ⋆ PITY ⋆ <i /><i /><i /><i /><i /><i /><i /><i /> ⋆ 14 / 90

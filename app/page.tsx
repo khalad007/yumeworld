@@ -8,6 +8,7 @@ import { WorldZone } from '@/components/sections/WorldZone'
 import { MusicZone } from '@/components/sections/MusicZone'
 import { CharactersZone } from '@/components/sections/CharactersZone'
 import { FunZone } from '@/components/sections/FunZone'
+import { AnimeShrine } from '@/components/sections/AnimeShrine'
 import { Ending } from '@/components/sections/Ending'
 
 export default function Home() {
@@ -27,6 +28,7 @@ export default function Home() {
         <MusicZone />
         <CharactersZone />
         <FunZone />
+        <AnimeShrine />
         <Ending />
       </main>
 
