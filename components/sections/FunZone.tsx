@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAudio } from '@/lib/AudioContext'
 
 function playSound(src: string, volume = 0.82) {
@@ -8,6 +9,87 @@ function playSound(src: string, volume = 0.82) {
   a.volume = volume
   a.play().catch(() => {})
 }
+
+// ─── Gacha types & data ───────────────────────────────────────────────────────
+
+type Rarity = 'SSR' | 'SR' | 'R' | 'N'
+
+interface GachaItem {
+  id: string
+  name: string
+  kanji: string
+  rarity: Rarity
+  pulledAt: number
+}
+
+interface GachaState {
+  pulled: GachaItem[]
+  pity: number
+}
+
+const GACHA_POOL: Omit<GachaItem, 'id' | 'pulledAt'>[] = [
+  { name: 'Dream Witch',   kanji: '夢魔', rarity: 'SSR' },
+  { name: 'Moon Cat',      kanji: '月猫', rarity: 'SSR' },
+  { name: 'Yume-chan',     kanji: '夢子', rarity: 'SSR' },
+  { name: 'Sakura Spirit', kanji: '桜霊', rarity: 'SR'  },
+  { name: 'Star Bunny',    kanji: '星兎', rarity: 'SR'  },
+  { name: 'Lav Fairy',     kanji: '花精', rarity: 'SR'  },
+  { name: 'Rain Girl',     kanji: '雨女', rarity: 'SR'  },
+  { name: 'Cozy Duck',     kanji: '鴨',   rarity: 'R'   },
+  { name: 'Cloud Cat',     kanji: '雲猫', rarity: 'R'   },
+  { name: 'Konbini Fox',   kanji: '狐',   rarity: 'R'   },
+  { name: 'Pixel Frog',    kanji: '蛙',   rarity: 'R'   },
+  { name: 'Boba Witch',    kanji: '茶魔', rarity: 'R'   },
+  { name: 'Plain Bread',   kanji: '麦',   rarity: 'N'   },
+  { name: 'Mystery Bean',  kanji: '豆',   rarity: 'N'   },
+  { name: 'Tiny Rock',     kanji: '石',   rarity: 'N'   },
+  { name: 'Soggy Fern',    kanji: '草',   rarity: 'N'   },
+  { name: 'Old Stamp',     kanji: '印',   rarity: 'N'   },
+]
+
+const RARITY_CONFIG: Record<Rarity, { starLabel: string; badgeCls: string }> = {
+  SSR: { starLabel: '✦✦✦ SSR', badgeCls: 'gold' },
+  SR:  { starLabel: '✦✦☆ SR',  badgeCls: 'lav'  },
+  R:   { starLabel: '✦☆☆ R',   badgeCls: 'pink' },
+  N:   { starLabel: '☆☆☆ N',   badgeCls: 'n'    },
+}
+
+const STORAGE_KEY = 'yumeworld-gacha'
+
+function loadGachaState(): GachaState {
+  if (typeof window === 'undefined') return { pulled: [], pity: 0 }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as GachaState) : { pulled: [], pity: 0 }
+  } catch {
+    return { pulled: [], pity: 0 }
+  }
+}
+
+function saveGachaState(state: GachaState) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+}
+
+function doRoll(pity: number): { item: GachaItem; newPity: number } {
+  let rarity: Rarity
+  if (pity >= 89) {
+    rarity = 'SSR'
+  } else {
+    const r = Math.random() * 100
+    if (r < 3)       rarity = 'SSR'
+    else if (r < 15) rarity = 'SR'
+    else if (r < 50) rarity = 'R'
+    else              rarity = 'N'
+  }
+  const candidates = GACHA_POOL.filter(i => i.rarity === rarity)
+  const base = candidates[Math.floor(Math.random() * candidates.length)]
+  return {
+    item: { ...base, id: `${Date.now()}-${Math.random()}`, pulledAt: Date.now() },
+    newPity: rarity === 'SSR' ? 0 : pity + 1,
+  }
+}
+
+// ─── Quote card ───────────────────────────────────────────────────────────────
 
 const QUOTES = [
   'Even on the saddest day in Tokyo, the convenience store is still warm and the cat is still loud.」',
@@ -50,63 +132,169 @@ function QuoteCard() {
   )
 }
 
-const BADGES = [
-  { cls: 'gold',   kanji: '夢', hasRibbon: true  },
-  { cls: 'pink',   kanji: '猫', hasRibbon: false },
-  { cls: 'cy',     kanji: '星', hasRibbon: false },
-  { cls: 'lav',    kanji: '桜', hasRibbon: false },
-  { cls: 'peach',  kanji: '麺', hasRibbon: false },
-  { cls: 'locked', kanji: '?',  hasRibbon: false },
+// ─── Achievements ─────────────────────────────────────────────────────────────
+
+const STATIC_BADGES = [
+  { cls: 'gold',  kanji: '夢', hasRibbon: true  },
+  { cls: 'pink',  kanji: '猫', hasRibbon: false },
+  { cls: 'cy',    kanji: '星', hasRibbon: false },
+  { cls: 'lav',   kanji: '桜', hasRibbon: false },
+  { cls: 'peach', kanji: '麺', hasRibbon: false },
 ]
 
-function Achievements() {
+function Achievements({ gachaItems }: { gachaItems: GachaItem[] }) {
   const { playBadge } = useAudio()
 
   const handleBadgeClick = (cls: string) => {
     if (cls === 'locked') return
     if (cls === 'gold') {
-      // Gold badge gets the Bankai treatment
       playSound('/music/bankai-byakuya.mp3', 0.8)
     } else {
       playBadge()
     }
   }
 
+  const totalUnlocked = STATIC_BADGES.length + gachaItems.length
+  const showGacha = gachaItems.slice(0, 13)
+  const lockedCount = Math.max(0, 1 - showGacha.length)
+
   return (
     <div className="panel achievements">
       <h3>
-        Badges <span className="ct">07 / 24</span>
+        Badges <span className="ct">{String(totalUnlocked).padStart(2, '0')} / 24</span>
       </h3>
       <div className="badge-row">
-        {BADGES.map((b) => (
+        {STATIC_BADGES.map((b) => (
           <div
             key={b.kanji + b.cls}
             className={`badge ${b.cls}`}
             onClick={() => handleBadgeClick(b.cls)}
-            style={{ cursor: b.cls === 'locked' ? 'not-allowed' : 'none' }}
+            style={{ cursor: 'none' }}
           >
             {b.kanji}
             {b.hasRibbon && <span className="ribbon">!</span>}
           </div>
         ))}
+        {showGacha.map((item) => (
+          <motion.div
+            key={item.id}
+            className={`badge ${RARITY_CONFIG[item.rarity].badgeCls}`}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            onClick={() => playBadge()}
+            style={{ cursor: 'none' }}
+            title={`${item.name} (${item.rarity})`}
+          >
+            {item.kanji}
+          </motion.div>
+        ))}
+        {Array.from({ length: lockedCount }).map((_, i) => (
+          <div key={`locked-${i}`} className="badge locked" style={{ cursor: 'not-allowed' }}>?</div>
+        ))}
       </div>
       <div style={{ font: '600 11px/1.4 var(--font-pixel)', letterSpacing: '.12em', opacity: 0.7 }}>
         ⋆ NEW! &nbsp;&quot;Stayed past midnight&quot; &nbsp;+ 1 chibi sticker
         <br />
-        <span style={{ opacity: 0.5 }}>⋆ tap 夢 for bankai · others for chime</span>
+        <span style={{ opacity: 0.5 }}>⋆ tap 夢 for bankai · pull gacha to earn more badges</span>
       </div>
     </div>
   )
 }
 
+// ─── Gacha result modal ───────────────────────────────────────────────────────
+
+function GachaModal({ item, onClose }: { item: GachaItem; onClose: () => void }) {
+  const cfg = RARITY_CONFIG[item.rarity]
+
+  return (
+    <motion.div
+      className="gacha-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className={`gacha-result gacha-result--${item.rarity.toLowerCase()}`}
+        initial={{ scale: 0.4, y: 80, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.75, opacity: 0 }}
+        transition={{ type: 'spring', damping: 16, stiffness: 220, delay: 0.05 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="gacha-shine" />
+
+        <div className={`gacha-rarity-chip gacha-rarity-chip--${item.rarity.toLowerCase()}`}>
+          {cfg.starLabel}
+        </div>
+
+        <motion.div
+          className={`badge ${cfg.badgeCls} gacha-item-icon`}
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.2 }}
+        >
+          {item.kanji}
+        </motion.div>
+
+        <motion.div
+          className="gacha-item-name"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.38 }}
+        >
+          {item.name}
+        </motion.div>
+
+        <button className="gacha-close-btn btn ghost" onClick={onClose}>
+          ✕ NICE
+        </button>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ─── FunZone ──────────────────────────────────────────────────────────────────
+
 export function FunZone() {
-  const [pulled, setPulled] = useState(false)
+  const [pulling, setPulling]               = useState(false)
+  const [capsuleVisible, setCapsuleVisible] = useState(false)
+  const [pullResult, setPullResult]         = useState<GachaItem | null>(null)
+  const [pityCount, setPityCount]           = useState(0)
+  const [pulledHistory, setPulledHistory]   = useState<GachaItem[]>([])
+
+  useEffect(() => {
+    const state = loadGachaState()
+    setPityCount(state.pity)
+    setPulledHistory(state.pulled)
+  }, [])
 
   const handleGacha = () => {
-    // Tuturu~ from Steins;Gate = perfect gacha pull sound
+    if (pulling) return
     playSound('/music/anime-tututru.mp3', 0.85)
-    setPulled(true)
-    setTimeout(() => setPulled(false), 3000)
+    setPulling(true)
+
+    const currentState = loadGachaState()
+    const { item, newPity } = doRoll(currentState.pity)
+
+    // Phase 1: machine shakes (900ms)
+    setTimeout(() => {
+      setCapsuleVisible(true)
+
+      // Phase 2: capsule drops (600ms)
+      setTimeout(() => {
+        setCapsuleVisible(false)
+        const newPulled = [item, ...currentState.pulled]
+        const newState: GachaState = { pulled: newPulled, pity: newPity }
+        saveGachaState(newState)
+        setPulledHistory(newPulled)
+        setPityCount(newPity)
+        setPullResult(item)
+        setPulling(false)
+      }, 600)
+    }, 900)
   }
 
   return (
@@ -126,18 +314,54 @@ export function FunZone() {
       </div>
 
       <div className="fun-grid">
-        {/* Gacha machine */}
+        {/* ── Gacha panel ── */}
         <div className="panel gacha crt-scan">
           <span className="corner-tab">★ DAILY GACHA</span>
-          <div className="gacha-machine">
-            <div className="dome" />
+
+          <motion.div
+            className="gacha-machine"
+            animate={pulling ? { x: [0, -10, 10, -8, 8, -5, 5, -3, 3, 0] } : { x: 0 }}
+            transition={{ duration: 0.75, ease: 'easeInOut' }}
+          >
+            <motion.div
+              className="dome"
+              animate={
+                pulling
+                  ? {
+                      boxShadow: [
+                        '0 20px 50px rgba(255,122,182,.4), inset 0 -10px 30px rgba(0,0,0,.2)',
+                        '0 20px 90px rgba(255,183,213,.9), 0 0 60px rgba(255,183,213,.7), inset 0 -10px 30px rgba(0,0,0,.2)',
+                        '0 20px 50px rgba(255,122,182,.4), inset 0 -10px 30px rgba(0,0,0,.2)',
+                        '0 20px 80px rgba(184,164,255,.8), 0 0 50px rgba(184,164,255,.6), inset 0 -10px 30px rgba(0,0,0,.2)',
+                        '0 20px 50px rgba(255,122,182,.4), inset 0 -10px 30px rgba(0,0,0,.2)',
+                      ],
+                    }
+                  : {}
+              }
+              transition={{ duration: 0.9 }}
+            />
             <div className="balls">
               <i /><i /><i /><i />
             </div>
             <div className="base" />
             <div className="slot" />
             <div className="knob" />
-          </div>
+
+            <AnimatePresence>
+              {capsuleVisible && (
+                <motion.div
+                  key="capsule"
+                  className="gacha-capsule"
+                  style={{ position: 'absolute', left: '50%', top: 215 }}
+                  initial={{ y: -10, x: '-50%', opacity: 0, scale: 0.4 }}
+                  animate={{ y: 50, x: '-50%', opacity: 1, scale: 1 }}
+                  exit={{ y: 110, x: '-50%', opacity: 0, scale: 0.7 }}
+                  transition={{ duration: 0.55, ease: 'easeIn' }}
+                />
+              )}
+            </AnimatePresence>
+          </motion.div>
+
           <div className="title">
             Pull a <em>tiny friend</em> from<br />the dream capsule.
           </div>
@@ -148,22 +372,24 @@ export function FunZone() {
           <button
             className="btn"
             onClick={handleGacha}
+            disabled={pulling}
             style={{
-              boxShadow: pulled ? '0 0 24px var(--cyan)' : undefined,
-              transition: 'box-shadow .4s',
+              position: 'relative', zIndex: 1,
+              opacity: pulling ? 0.7 : 1,
+              transition: 'opacity .2s',
             }}
           >
-            {pulled ? '✿ TUTURU~! CONGRATS!' : <>Pull once <span className="kbd">FREE</span></>}
+            {pulling ? '✿ PULLING...' : <>Pull once <span className="kbd">FREE</span></>}
           </button>
           <div className="pity">
-            ⋆ PITY ⋆ <i /><i /><i /><i /><i /><i /><i /><i /> ⋆ 14 / 90
+            ⋆ PITY ⋆ <i /><i /><i /><i /><i /><i /><i /><i /> ⋆ {pityCount} / 90
           </div>
         </div>
 
-        {/* Quote */}
+        {/* ── Quote ── */}
         <QuoteCard />
 
-        {/* Pixel game */}
+        {/* ── Pixel game ── */}
         <div className="panel pixelgame">
           <div className="crt">
             <div className="hud">
@@ -189,9 +415,16 @@ export function FunZone() {
           </div>
         </div>
 
-        {/* Achievements */}
-        <Achievements />
+        {/* ── Achievements ── */}
+        <Achievements gachaItems={pulledHistory} />
       </div>
+
+      {/* ── Gacha result modal ── */}
+      <AnimatePresence>
+        {pullResult && (
+          <GachaModal item={pullResult} onClose={() => setPullResult(null)} />
+        )}
+      </AnimatePresence>
     </section>
   )
 }

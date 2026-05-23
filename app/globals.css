@@ -604,7 +604,71 @@ img { max-width: 100%; display: block; }
 .badge.lav { background: linear-gradient(135deg, #D4C5FF, #B8A4FF); }
 .badge.peach { background: linear-gradient(135deg, #FFE2B8, #FFD4A8); }
 .badge.locked { background: rgba(255,255,255,.06); color: rgba(255,255,255,.3); box-shadow: none; border: 1px dashed rgba(255,255,255,.18); }
+.badge.n { background: linear-gradient(135deg, #ece7f6, #fff); }
 .badge .ribbon { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #1a0f3a; color: #fff; font: 800 10px/22px var(--font-pixel); text-align: center; }
+
+/* ─────────── Gacha modal & capsule ─────────── */
+.gacha-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(11,8,32,.88); backdrop-filter: blur(14px);
+  display: grid; place-items: center;
+}
+.gacha-result {
+  position: relative; overflow: hidden;
+  padding: 44px 40px 36px; border-radius: 28px; text-align: center;
+  background: linear-gradient(160deg, rgba(255,255,255,.1), rgba(255,255,255,.04));
+  border: 1.5px solid rgba(255,255,255,.28);
+  box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  min-width: 300px; max-width: 380px;
+}
+.gacha-result--ssr {
+  border-color: rgba(255,212,168,.75);
+  box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 70px rgba(255,212,168,.45);
+}
+.gacha-result--sr {
+  border-color: rgba(184,164,255,.75);
+  box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 60px rgba(184,164,255,.45);
+}
+.gacha-result--r {
+  border-color: rgba(255,183,213,.75);
+  box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 44px rgba(255,183,213,.35);
+}
+.gacha-result--n {
+  border-color: rgba(255,255,255,.3);
+  box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 28px rgba(255,255,255,.15);
+}
+.gacha-shine {
+  position: absolute; inset: -60%;
+  background: conic-gradient(from 0deg, transparent 0deg 72deg, rgba(255,255,255,.14) 72deg 92deg, transparent 92deg 360deg);
+  animation: spin 3.2s linear infinite;
+  pointer-events: none;
+}
+.gacha-rarity-chip {
+  font: 700 12px/1 var(--font-pixel); letter-spacing: .22em;
+  padding: 6px 16px; border-radius: 999px;
+  position: relative; z-index: 1;
+}
+.gacha-rarity-chip--ssr { background: rgba(255,212,168,.18); color: #FFE9A8; border: 1px solid rgba(255,212,168,.55); }
+.gacha-rarity-chip--sr  { background: rgba(184,164,255,.18); color: #D4C5FF; border: 1px solid rgba(184,164,255,.55); }
+.gacha-rarity-chip--r   { background: rgba(255,183,213,.18); color: #FFD6EC; border: 1px solid rgba(255,183,213,.55); }
+.gacha-rarity-chip--n   { background: rgba(255,255,255,.08); color: #ece7f6; border: 1px solid rgba(255,255,255,.28); }
+.gacha-item-icon {
+  width: 116px !important; height: 116px !important;
+  font-size: 54px !important; border-radius: 24px !important;
+  position: relative; z-index: 1;
+}
+.gacha-item-name {
+  font-family: var(--font-serif); font-size: 30px; font-weight: 800; color: #fff;
+  text-shadow: 0 0 20px rgba(255,255,255,.3);
+  position: relative; z-index: 1;
+}
+.gacha-close-btn { position: relative; z-index: 1; }
+.gacha-capsule {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff 0%, var(--lav) 45%, var(--pink) 100%);
+  box-shadow: 0 0 22px var(--pink), 0 0 10px var(--lav), inset 0 -4px 0 rgba(0,0,0,.2);
+}
 
 /* ─────────── Anime Shrine section (05) ─────────── */
 .shrine {
