@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(findstr /v \"tailwind.config\")",
+      "Bash(npx next *)",
+      "Bash(findstr /i \"compiled\\\\|error\\\\|warning\\\\|success\")",
+      "Bash(Select-String -Pattern \"compiled|error|success\" -SimpleMatch)",
+      "PowerShell(cd \"D:\\\\my own\\\\Yume\\\\yumeworld\"; $out = npx next build 2>&1; $out | Where-Object { $_ -match \"Compiled|compiled|success|error TS\" })"
+    ]
+  }
+}

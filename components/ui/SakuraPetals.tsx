@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useAudio } from '@/lib/AudioContext'
 
 interface PetalStyle {
   left: string
@@ -12,6 +13,7 @@ interface PetalStyle {
 
 export function SakuraPetals() {
   const [petals, setPetals] = useState<PetalStyle[]>([])
+  const { playPetalPop } = useAudio()
 
   useEffect(() => {
     setPetals(
@@ -28,10 +30,20 @@ export function SakuraPetals() {
     )
   }, [])
 
+  // playPetalPop auto-inits the AudioContext on first call — no ready guard needed
+  const handlePetalClick = useCallback(() => {
+    playPetalPop()
+  }, [playPetalPop])
+
   return (
     <div className="petals" id="petals" aria-hidden="true">
       {petals.map((style, i) => (
-        <div key={i} className="petal" style={style} />
+        <div
+          key={i}
+          className="petal"
+          style={{ ...style, pointerEvents: 'auto', cursor: 'none' }}
+          onClick={handlePetalClick}
+        />
       ))}
     </div>
   )

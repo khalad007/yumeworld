@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useAudio } from '@/lib/AudioContext'
 
 const QUOTES = [
   'Even on the saddest day in Tokyo, the convenience store is still warm and the cat is still loud.」',
@@ -13,9 +14,11 @@ const QUOTES = [
 function QuoteCard() {
   const [idx, setIdx] = useState(0)
   const [fading, setFading] = useState(false)
+  const { playChime, ready } = useAudio()
 
   const reroll = () => {
     setFading(true)
+    if (ready) playChime(660 + idx * 40)
     setTimeout(() => {
       setIdx((i) => (i + 1) % QUOTES.length)
       setFading(false)
@@ -41,7 +44,60 @@ function QuoteCard() {
   )
 }
 
+// Badge data
+const BADGES = [
+  { cls: 'gold',   kanji: '夢', hasRibbon: true  },
+  { cls: 'pink',   kanji: '猫', hasRibbon: false },
+  { cls: 'cy',     kanji: '星', hasRibbon: false },
+  { cls: 'lav',    kanji: '桜', hasRibbon: false },
+  { cls: 'peach',  kanji: '麺', hasRibbon: false },
+  { cls: 'locked', kanji: '?',  hasRibbon: false },
+]
+
+function Achievements() {
+  const { playBadge, ready } = useAudio()
+
+  const handleBadgeClick = (cls: string) => {
+    if (cls === 'locked') return
+    if (ready) playBadge()
+  }
+
+  return (
+    <div className="panel achievements">
+      <h3>
+        Badges <span className="ct">07 / 24</span>
+      </h3>
+      <div className="badge-row">
+        {BADGES.map((b) => (
+          <div
+            key={b.kanji + b.cls}
+            className={`badge ${b.cls}`}
+            onClick={() => handleBadgeClick(b.cls)}
+            style={{ cursor: b.cls === 'locked' ? 'not-allowed' : 'none' }}
+          >
+            {b.kanji}
+            {b.hasRibbon && <span className="ribbon">!</span>}
+          </div>
+        ))}
+      </div>
+      <div
+        style={{
+          font: '600 11px/1.4 var(--font-pixel)',
+          letterSpacing: '.12em',
+          opacity: 0.7,
+        }}
+      >
+        ⋆ NEW! &nbsp;&quot;Stayed past midnight&quot; &nbsp;+ 1 chibi sticker
+        <br />
+        <span style={{ opacity: 0.5 }}>⋆ tap a badge to hear it shine</span>
+      </div>
+    </div>
+  )
+}
+
 export function FunZone() {
+  const { playChime, ready } = useAudio()
+
   return (
     <section className="zone fun" id="fun">
       <div className="section-head">
@@ -65,10 +121,7 @@ export function FunZone() {
           <div className="gacha-machine">
             <div className="dome" />
             <div className="balls">
-              <i />
-              <i />
-              <i />
-              <i />
+              <i /><i /><i /><i />
             </div>
             <div className="base" />
             <div className="slot" />
@@ -81,7 +134,17 @@ export function FunZone() {
             One free pull every day at midnight Tokyo time. SSR cats are 0.3% — but the
             chibi ducks are everywhere.
           </div>
-          <button className="btn">
+          <button
+            className="btn"
+            onClick={() => {
+              if (ready) {
+                // ascending chime sequence = gacha pull sound
+                [523, 659, 784, 1047].forEach((f, i) =>
+                  setTimeout(() => playChime(f), i * 100)
+                )
+              }
+            }}
+          >
             Pull once <span className="kbd">FREE</span>
           </button>
           <div className="pity">
@@ -119,28 +182,7 @@ export function FunZone() {
         </div>
 
         {/* Achievements */}
-        <div className="panel achievements">
-          <h3>
-            Badges <span className="ct">07 / 24</span>
-          </h3>
-          <div className="badge-row">
-            <div className="badge gold">夢<span className="ribbon">!</span></div>
-            <div className="badge pink">猫</div>
-            <div className="badge cy">星</div>
-            <div className="badge lav">桜</div>
-            <div className="badge peach">麺</div>
-            <div className="badge locked">?</div>
-          </div>
-          <div
-            style={{
-              font: '600 11px/1.4 var(--font-pixel)',
-              letterSpacing: '.12em',
-              opacity: 0.7,
-            }}
-          >
-            ⋆ NEW! &nbsp;&quot;Stayed past midnight&quot; &nbsp;+ 1 chibi sticker
-          </div>
-        </div>
+        <Achievements />
       </div>
     </section>
   )
