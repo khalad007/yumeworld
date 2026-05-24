@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 interface Stat {
   label: string
   width: string
@@ -9,7 +11,8 @@ interface Character {
   tab: string
   num: string
   charClass: string
-  miniClass: string
+  slug: string
+  delay: string
   reactionA: string
   reactionB: string
   name: string
@@ -24,7 +27,8 @@ const CHARACTERS: Character[] = [
     tab: '★ 01 / GUIDE',
     num: 'char-1',
     charClass: 'char-1',
-    miniClass: 'a',
+    slug: 'yume',
+    delay: '0s',
     reactionA: 'きゃー♡',
     reactionB: 'LV.18',
     name: 'Yume',
@@ -42,7 +46,8 @@ const CHARACTERS: Character[] = [
     tab: '★ 02 / HACKER',
     num: 'char-2',
     charClass: 'char-2',
-    miniClass: 'b',
+    slug: 'rin',
+    delay: '-0.75s',
     reactionA: '!?',
     reactionB: 'LV.27',
     name: 'Rin',
@@ -60,7 +65,8 @@ const CHARACTERS: Character[] = [
     tab: '★ 03 / WITCH',
     num: 'char-3',
     charClass: 'char-3',
-    miniClass: 'c',
+    slug: 'hoshi',
+    delay: '-1.5s',
     reactionA: '✦◡✦',
     reactionB: 'LV.99',
     name: 'Hoshi',
@@ -78,7 +84,8 @@ const CHARACTERS: Character[] = [
     tab: '★ 04 / CAT',
     num: 'char-4',
     charClass: 'char-4',
-    miniClass: 'd',
+    slug: 'mochi',
+    delay: '-2.25s',
     reactionA: 'にゃ〜',
     reactionB: 'LV.0.5',
     name: 'Mochi',
@@ -118,17 +125,30 @@ export function CharactersZone() {
           <div key={c.name} className={`char ${c.charClass} panel`}>
             <span className="corner-tab">{c.tab}</span>
             <div className="portrait">
-              <div className={`mini ${c.miniClass}`}>
-                <div className="head">
-                  <div className="hair" />
-                  <div className="eye l" />
-                  <div className="eye r" />
-                  <div className="blush l" />
-                  <div className="blush r" />
-                  <div className="mouth" />
-                </div>
-                <div className="body" />
-              </div>
+              <Image
+                src={`/sprites/${c.slug}-idle.png`}
+                fill
+                alt={`${c.name} idle`}
+                className="sprite-idle"
+                sizes="(max-width: 900px) 45vw, 330px"
+                style={{ objectFit: 'contain', animationDelay: c.delay }}
+              />
+              <Image
+                src={`/sprites/${c.slug}-blink.png`}
+                fill
+                alt={`${c.name} blink`}
+                className="sprite-blink"
+                sizes="(max-width: 900px) 45vw, 330px"
+                style={{ objectFit: 'contain', animationDelay: c.delay }}
+              />
+              <Image
+                src={`/sprites/${c.slug}-lean.png`}
+                fill
+                alt={`${c.name} lean`}
+                className="sprite-lean"
+                sizes="(max-width: 900px) 45vw, 330px"
+                style={{ objectFit: 'contain', animationDelay: c.delay }}
+              />
               <span className="reaction">{c.reactionA}</span>
               <span className="reaction b">{c.reactionB}</span>
             </div>

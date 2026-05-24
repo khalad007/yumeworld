@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAudio } from '@/lib/AudioContext'
 
@@ -256,6 +256,206 @@ function GachaModal({ item, onClose }: { item: GachaItem; onClose: () => void })
   )
 }
 
+// ─── Pixel Mini-Game ─────────────────────────────────────────────────────────
+
+const PIXEL_KEY = 'yumeworld-pixelgame'
+
+function PixelGame() {
+  const panelRef      = useRef<HTMLDivElement>(null)
+  const crtRef        = useRef<HTMLDivElement>(null)
+  const scoreSpanRef  = useRef<HTMLSpanElement>(null)
+  const hiSpanRef     = useRef<HTMLSpanElement>(null)
+  const activeRef     = useRef(false)
+  const savedHiRef    = useRef(0)
+  const [active, setActive] = useState(false)
+
+  // Load hi-score from localStorage on mount
+  useEffect(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem(PIXEL_KEY) || '{}')
+      savedHiRef.current = d.hiScore || 0
+    } catch {}
+    if (hiSpanRef.current) {
+      hiSpanRef.current.textContent = `HI · ${String(savedHiRef.current).padStart(5, '0')}`
+    }
+  }, [])
+
+  // Deactivate on click outside
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (activeRef.current && panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        activeRef.current = false
+        setActive(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  // Game loop — runs only while active
+  useEffect(() => {
+    if (!active) return
+    const crt = crtRef.current
+    if (!crt) return
+
+    const PW = 24, PH = 24, SW = 10, SH = 10
+    const SPEED = 2.5, JUMP = 7, GRAV = 0.42
+
+    const W  = crt.clientWidth
+    const H  = crt.clientHeight
+    const GH = H * 0.3   // ground height in px (matches CSS bottom: 30%)
+    if (W === 0 || H === 0) return
+
+    // ── player element ──
+    const pEl = document.createElement('div')
+    pEl.className = 'player'
+    pEl.style.animation = 'none'
+    crt.appendChild(pEl)
+
+    let px = W * 0.3, py = GH, vy = 0, grounded = true
+    let score = 0, hiScore = savedHiRef.current
+
+    // ── stars ──
+    interface Star { el: HTMLDivElement; x: number; y: number }
+    const stars: Star[] = []
+    const spawnTimers: ReturnType<typeof setTimeout>[] = []
+
+    const spawnStar = () => {
+      const el = document.createElement('div')
+      el.className = 'star-p'
+      el.style.right = 'auto'                           // override CSS `right: 20%`
+      const x = 10 + Math.random() * (W - SW - 20)
+      el.style.left   = x + 'px'
+      el.style.bottom = GH + 'px'
+      crt.appendChild(el)
+      stars.push({ el, x, y: GH })
+    }
+
+    const scheduleSpawn = () => {
+      const id = setTimeout(() => {
+        if (activeRef.current) spawnStar()
+      }, 1200 + Math.random() * 1800)
+      spawnTimers.push(id)
+    }
+
+    for (let i = 0; i < 3; i++) spawnStar()
+
+    const updateHUD = () => {
+      if (scoreSpanRef.current) scoreSpanRef.current.textContent = `1UP · ${String(score).padStart(5, '0')}`
+      if (hiSpanRef.current)    hiSpanRef.current.textContent    = `HI · ${String(hiScore).padStart(5, '0')}`
+    }
+    updateHUD()
+
+    // ── keyboard state ──
+    const keys: Record<string, boolean> = {}
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!activeRef.current) return
+      keys[e.key] = true
+      if ([' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault()
+    }
+    const onKeyUp = (e: KeyboardEvent) => { keys[e.key] = false }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup',   onKeyUp)
+
+    // ── RAF loop ──
+    let raf: number
+    const loop = () => {
+      if (!activeRef.current) return
+
+      // horizontal movement
+      if (keys['ArrowLeft']  || keys['a']) px = Math.max(0,        px - SPEED)
+      if (keys['ArrowRight'] || keys['d']) px = Math.min(W - PW,   px + SPEED)
+
+      // jump
+      if ((keys[' '] || keys['ArrowUp'] || keys['w']) && grounded) {
+        vy = JUMP; grounded = false
+      }
+
+      // gravity & vertical position
+      if (!grounded) { vy -= GRAV; py += vy }
+      if (py <= GH)  { py = GH; vy = 0; grounded = true }
+
+      pEl.style.left   = px + 'px'
+      pEl.style.bottom = py + 'px'
+
+      // star collision (AABB in bottom-coord space)
+      for (let i = stars.length - 1; i >= 0; i--) {
+        const s = stars[i]
+        if (px < s.x + SW && px + PW > s.x && py < s.y + SH && py + PH > s.y) {
+          s.el.remove()
+          stars.splice(i, 1)
+          score++
+          if (score > hiScore) {
+            hiScore = score
+            savedHiRef.current = hiScore
+            try { localStorage.setItem(PIXEL_KEY, JSON.stringify({ hiScore })) } catch {}
+          }
+          updateHUD()
+          scheduleSpawn()
+        }
+      }
+
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup',   onKeyUp)
+      spawnTimers.forEach(clearTimeout)
+      pEl.remove()
+      stars.forEach(s => s.el.remove())
+    }
+  }, [active])
+
+  const activate = () => {
+    if (!activeRef.current) {
+      activeRef.current = true
+      setActive(true)
+    }
+  }
+
+  return (
+    <div className="panel pixelgame" ref={panelRef} onClick={activate}>
+      <div className="crt" ref={crtRef}>
+        <div className="hud">
+          <span ref={scoreSpanRef}>1UP · 00000</span>
+          <span ref={hiSpanRef}>HI · 00000</span>
+        </div>
+        <div className="ground" />
+        {!active && (
+          <>
+            <div className="player" />
+            <div className="star-p" />
+            <div className="star-p" style={{ left: '20%', bottom: '60%', animationDelay: '.4s' }} />
+            <div className="star-p" style={{ right: '30%', bottom: '35%', animationDelay: '.7s' }} />
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              font: '700 9px/1 var(--font-arcade)', color: 'var(--pink)',
+              letterSpacing: '.14em', background: 'rgba(7,3,20,0.6)',
+            }}>
+              CLICK TO PLAY
+            </div>
+          </>
+        )}
+      </div>
+      <h3>PIXEL GARDEN</h3>
+      <div className="row">
+        <span>STAGE 1-2</span>
+        <span>★★☆☆☆</span>
+      </div>
+      <div className="keys">
+        <span>← →</span>
+        <span>SPACE</span>
+        <span>JUMP</span>
+        <span>Z · CATCH</span>
+      </div>
+    </div>
+  )
+}
+
 // ─── FunZone ──────────────────────────────────────────────────────────────────
 
 export function FunZone() {
@@ -390,30 +590,7 @@ export function FunZone() {
         <QuoteCard />
 
         {/* ── Pixel game ── */}
-        <div className="panel pixelgame">
-          <div className="crt">
-            <div className="hud">
-              <span>1UP · 04200</span>
-              <span>HI · 99999</span>
-            </div>
-            <div className="ground" />
-            <div className="player" />
-            <div className="star-p" />
-            <div className="star-p" style={{ left: '20%', bottom: '60%', animationDelay: '.4s' }} />
-            <div className="star-p" style={{ right: '30%', bottom: '35%', animationDelay: '.7s' }} />
-          </div>
-          <h3>PIXEL GARDEN</h3>
-          <div className="row">
-            <span>STAGE 1-2</span>
-            <span>★★☆☆☆</span>
-          </div>
-          <div className="keys">
-            <span>← →</span>
-            <span>SPACE</span>
-            <span>JUMP</span>
-            <span>Z · CATCH</span>
-          </div>
-        </div>
+        <PixelGame />
 
         {/* ── Achievements ── */}
         <Achievements gachaItems={pulledHistory} />
