@@ -56,8 +56,7 @@ const config: Config = {
       backdropBlur: { DEFAULT: '14px' },
     },
   },
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  plugins: [require('tailwindcss-animate')],
+  plugins: [],
 }
 
 export default config

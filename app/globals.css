@@ -7,6 +7,10 @@
 
 /* ─────────── Design tokens ─────────── */
 :root {
+  --font-kawaii: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-pixel: "Courier New", Consolas, monospace;
+  --font-arcade: "Lucida Console", Monaco, monospace;
   --pink: #FFB7D5;
   --pink-2: #FF7AB6;
   --lav: #B8A4FF;
