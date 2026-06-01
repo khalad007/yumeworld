@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { AudioProvider } from '@/lib/AudioContext'
 import { HertaFloat } from '@/components/ui/HertaFloat'
+import { TimeTheme } from '@/components/ui/TimeTheme'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="overflow-x-hidden">
+        <TimeTheme />
         <AudioProvider>
           {children}
           <HertaFloat />
