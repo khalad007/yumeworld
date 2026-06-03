@@ -19,7 +19,7 @@ export function Topbar() {
 
       <div className="right">
         <span className="chip cy">JP / EN</span>
-        <span className="live">ON-AIR ⋆ 12,482 dreaming</span>
+        <span className="live">ON-AIR ⋆ 2500 dreaming</span>
       </div>
     </header>
   )
